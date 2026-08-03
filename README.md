@@ -1,6 +1,6 @@
 # Lyric Video Maker
 
-A native Android lyric-video studio built with Kotlin, Jetpack Compose, and Media3.
+A native Android lyric-video studio built with Kotlin, Jetpack Compose, Media3, and whisper.cpp.
 
 ## Complete workflow
 
@@ -8,14 +8,24 @@ A native Android lyric-video studio built with Kotlin, Jetpack Compose, and Medi
 2. Extract embedded lyrics and embedded cover artwork automatically.
 3. Use the embedded cover, choose another image, or replace it later.
 4. Use synchronized embedded lyrics immediately, or import/paste trusted lyrics.
-5. Transcribe the audio with word timestamps using the user's own OpenAI API key.
-6. Compare the transcription against the trusted lyrics and align every line and word.
-7. Preview lyric timing while the audio plays.
-8. Render an H.264/AAC MP4 with karaoke highlighting.
+5. Download a small Whisper model once inside the app.
+6. Transcribe the audio fully on-device with no API key or upload.
+7. Compare the transcription against the trusted lyrics and align every line and word.
+8. Preview lyric timing while the audio plays.
+9. Render an H.264/AAC MP4 with karaoke highlighting.
 
 ## Audio metadata support
 
 The embedded-lyrics parser supports ID3 `USLT`, `SYLT`, lyric `TXXX` frames, FLAC/Vorbis comments, Ogg/Opus comments, MP4/M4A lyric atoms, WAV/RIFF chunks, APEv2, and LRC timestamps. Android's media metadata stack extracts common embedded cover-art formats such as ID3 APIC, FLAC pictures, and MP4 cover atoms.
+
+## Offline transcription
+
+- No OpenAI API key is requested or stored.
+- Audio is decoded to 16 kHz mono PCM on the device.
+- whisper.cpp performs transcription locally.
+- Tiny multilingual and Tiny English quantized models are downloadable from the official whisper.cpp model repository.
+- The app verifies the downloaded model with SHA-256 before using it.
+- Once a model is installed, transcription works offline.
 
 ## Video behavior
 
@@ -25,10 +35,13 @@ The embedded-lyrics parser supports ID3 `USLT`, `SYLT`, lyric `TXXX` frames, FLA
 - The image is not darkened by default. Background dimming is an explicit optional control.
 - Output uses Android Media3 Transformer, H.264 video, and AAC audio.
 
-## Transcription privacy
-
-No API key is bundled in the app or committed to the repository. The entered key is held in the running UI and sent only in the transcription request. Audio is uploaded to the configured transcription API only when the user taps **Transcribe audio**.
-
 ## Build
 
-The GitHub Actions workflow runs unit tests and produces `Lyric-Video-Maker-debug.apk` as an artifact.
+The native dependency is pinned to whisper.cpp `v1.8.6` and is downloaded into an ignored build directory:
+
+```bash
+bash scripts/prepare-whisper.sh
+gradle testDebugUnitTest lintDebug assembleDebug
+```
+
+The GitHub Actions workflow installs the Android NDK/CMake toolchain, prepares whisper.cpp, runs tests and lint, builds the APK, and uploads `Lyric-Video-Maker-offline-debug` as an artifact.
