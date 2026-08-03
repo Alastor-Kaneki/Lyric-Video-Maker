@@ -46,13 +46,36 @@ jobs:
                   '@Composable\nfun LyricVideoMakerScreen',
                   '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun LyricVideoMakerScreen',
               )
+          old_preview = '''    val previewBitmap by produceState<ImageBitmap?>(null, imageUri) {
+        value = withContext(Dispatchers.IO) {
+            imageUri?.let { uri ->
+                val stream = if (uri.scheme == "file") FileInputStream(requireNotNull(uri.path))
+                else context.contentResolver.openInputStream(uri)
+                stream?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            }
+        }
+    }
+'''
+          new_preview = '''    val previewBitmap by produceState<ImageBitmap?>(null, imageUri) {
+        val selectedImage = imageUri
+        val decoded = withContext(Dispatchers.IO) {
+            selectedImage?.let { uri ->
+                val stream = if (uri.scheme == "file") FileInputStream(requireNotNull(uri.path))
+                else context.contentResolver.openInputStream(uri)
+                stream?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            }
+        }
+        value = decoded
+    }
+'''
+          text = text.replace(old_preview, new_preview)
           p.write_text(text)
           PY
           if ! git diff --quiet; then
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git add app/src/main/java/com/alastorkaneki/lyricvideomaker/ui/LyricVideoMakerScreen.kt
-            git commit -m "Normalize Compose editor source"
+            git commit -m "Fix Compose preview state production"
             git push
           fi
       - uses: actions/setup-java@v4
