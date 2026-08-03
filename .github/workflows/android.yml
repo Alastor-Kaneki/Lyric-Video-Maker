@@ -72,7 +72,27 @@ jobs:
         if: steps.unit_tests.outputs.status != '0'
         run: exit 1
       - name: Android lint
-        run: gradle lintDebug --stacktrace
+        id: android_lint
+        shell: bash
+        run: |
+          set +e
+          gradle lintDebug --stacktrace 2>&1 | tee gradle-lint.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Android lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-lint-report
+          path: |
+            gradle-lint.log
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+            app/build/reports/lint-results-debug.xml
+          if-no-files-found: warn
+      - name: Stop after failed lint
+        if: steps.android_lint.outputs.status != '0'
+        run: exit 1
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
       - name: Upload APK
