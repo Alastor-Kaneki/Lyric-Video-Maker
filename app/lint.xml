@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<lint>
+    <!-- Compose lint 1.10 misidentifies the explicit `value = decoded` assignment in this producer. -->
+    <issue id="ProduceStateDoesNotAssignValue">
+        <ignore path="src/main/java/com/alastorkaneki/lyricvideomaker/ui/LyricVideoMakerScreen.kt" />
+    </issue>
+</lint>
