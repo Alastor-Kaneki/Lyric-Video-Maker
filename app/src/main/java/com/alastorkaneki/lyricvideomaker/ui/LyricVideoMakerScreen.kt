@@ -167,13 +167,15 @@ fun LyricVideoMakerScreen(amoled: Boolean, onAmoledChanged: (Boolean) -> Unit) {
     LaunchedEffect(player) { while (true) { playbackMs = player.currentPosition.coerceAtLeast(0L); delay(100) } }
 
     val previewBitmap by produceState<ImageBitmap?>(null, imageUri) {
-        value = withContext(Dispatchers.IO) {
-            imageUri?.let { uri ->
+        val selectedImage = imageUri
+        val decoded = withContext(Dispatchers.IO) {
+            selectedImage?.let { uri ->
                 val stream = if (uri.scheme == "file") FileInputStream(requireNotNull(uri.path))
                 else context.contentResolver.openInputStream(uri)
                 stream?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
             }
         }
+        value = decoded
     }
     val activeLine = alignment?.lines?.lastOrNull { it.startMs <= playbackMs }
 
