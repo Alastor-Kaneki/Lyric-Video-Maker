@@ -8,5 +8,6 @@
 .externalNativeBuild/
 .cxx/
 app/release/
+.whispercpp/
 *.jks
 *.keystore
