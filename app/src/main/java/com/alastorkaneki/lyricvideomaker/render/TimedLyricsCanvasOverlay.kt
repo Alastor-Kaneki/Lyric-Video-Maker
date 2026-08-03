@@ -28,11 +28,20 @@ class TimedLyricsCanvasOverlay(
     private val normalColor = Color.WHITE
     private val inactiveColor = Color.argb(190, 235, 235, 235)
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(120, 0, 0, 0) }
-    private val dimPaint = Paint().apply { color = Color.argb((style.dimBackground.coerceIn(0f, 0.75f) * 255).roundToInt(), 0, 0, 0) }
+    private val dimPaint = Paint().apply {
+        color = Color.argb(
+            (this@TimedLyricsCanvasOverlay.style.dimBackground.coerceIn(0f, 0.75f) * 255).roundToInt(),
+            0,
+            0,
+            0,
+        )
+    }
 
     override fun onDraw(canvas: Canvas, presentationTimeUs: Long) {
         canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-        if (style.dimBackground > 0f) canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), dimPaint)
+        if (style.dimBackground > 0f) {
+            canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), dimPaint)
+        }
         if (lines.isEmpty()) return
         val timeMs = presentationTimeUs / 1_000L
         val index = lines.indexOfLast { it.startMs <= timeMs }.coerceAtLeast(0)

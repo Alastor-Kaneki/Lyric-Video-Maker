@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -15,6 +15,69 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+      - name: Normalize plain Compose source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('app/src/main/java/com/alastorkaneki/lyricvideomaker/ui/LyricVideoMakerScreen.kt')
+          text = p.read_text()
+          text = text.replace('import androidx.compose.foundation.layout.weight\n', '')
+          while text.count('import androidx.compose.material3.ExperimentalMaterial3Api\n') > 1:
+              text = text.replace(
+                  'import androidx.compose.material3.ExperimentalMaterial3Api\nimport androidx.compose.material3.ExperimentalMaterial3Api\n',
+                  'import androidx.compose.material3.ExperimentalMaterial3Api\n',
+              )
+          if 'import androidx.compose.material3.ExperimentalMaterial3Api\n' not in text:
+              text = text.replace(
+                  'import androidx.compose.material3.FilterChip\n',
+                  'import androidx.compose.material3.ExperimentalMaterial3Api\nimport androidx.compose.material3.FilterChip\n',
+              )
+          while text.count('@OptIn(ExperimentalMaterial3Api::class)\n') > 1:
+              text = text.replace(
+                  '@OptIn(ExperimentalMaterial3Api::class)\n@OptIn(ExperimentalMaterial3Api::class)\n',
+                  '@OptIn(ExperimentalMaterial3Api::class)\n',
+              )
+          if '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun LyricVideoMakerScreen' not in text:
+              text = text.replace(
+                  '@Composable\nfun LyricVideoMakerScreen',
+                  '@OptIn(ExperimentalMaterial3Api::class)\n@Composable\nfun LyricVideoMakerScreen',
+              )
+          old_preview = '''    val previewBitmap by produceState<ImageBitmap?>(null, imageUri) {
+        value = withContext(Dispatchers.IO) {
+            imageUri?.let { uri ->
+                val stream = if (uri.scheme == "file") FileInputStream(requireNotNull(uri.path))
+                else context.contentResolver.openInputStream(uri)
+                stream?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            }
+        }
+    }
+'''
+          new_preview = '''    val previewBitmap by produceState<ImageBitmap?>(null, imageUri) {
+        val selectedImage = imageUri
+        val decoded = withContext(Dispatchers.IO) {
+            selectedImage?.let { uri ->
+                val stream = if (uri.scheme == "file") FileInputStream(requireNotNull(uri.path))
+                else context.contentResolver.openInputStream(uri)
+                stream?.use { BitmapFactory.decodeStream(it)?.asImageBitmap() }
+            }
+        }
+        value = decoded
+    }
+'''
+          text = text.replace(old_preview, new_preview)
+          p.write_text(text)
+          PY
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add app/src/main/java/com/alastorkaneki/lyricvideomaker/ui/LyricVideoMakerScreen.kt
+            git commit -m "Fix Compose preview state production"
+            git push
+          fi
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -26,9 +89,45 @@ jobs:
         with:
           gradle-version: "8.9"
       - name: Unit tests
-        run: gradle testDebugUnitTest --stacktrace
+        id: unit_tests
+        shell: bash
+        run: |
+          set +e
+          gradle testDebugUnitTest --stacktrace 2>&1 | tee gradle-test.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Gradle test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-test-log
+          path: gradle-test.log
+          if-no-files-found: error
+      - name: Stop after failed tests
+        if: steps.unit_tests.outputs.status != '0'
+        run: exit 1
       - name: Android lint
-        run: gradle lintDebug --stacktrace
+        id: android_lint
+        shell: bash
+        run: |
+          set +e
+          gradle lintDebug --stacktrace 2>&1 | tee gradle-lint.log
+          echo "status=${PIPESTATUS[0]}" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Upload Android lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gradle-lint-report
+          path: |
+            gradle-lint.log
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.txt
+            app/build/reports/lint-results-debug.xml
+          if-no-files-found: warn
+      - name: Stop after failed lint
+        if: steps.android_lint.outputs.status != '0'
+        run: exit 1
       - name: Build debug APK
         run: gradle assembleDebug --stacktrace
       - name: Upload APK
