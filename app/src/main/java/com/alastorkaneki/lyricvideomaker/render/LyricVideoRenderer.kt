@@ -5,10 +5,8 @@ import android.net.Uri
 import android.os.Handler
 import android.os.Looper
 import androidx.annotation.OptIn
-import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
-import androidx.media3.common.util.ProgressHolder
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.effect.OverlayEffect
 import androidx.media3.effect.Presentation
@@ -18,6 +16,7 @@ import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
+import androidx.media3.transformer.ProgressHolder
 import androidx.media3.transformer.Transformer
 import com.alastorkaneki.lyricvideomaker.model.AlignedLyricLine
 import com.alastorkaneki.lyricvideomaker.model.OutputDimensions
@@ -82,12 +81,8 @@ class LyricVideoRenderer(private val context: Context) {
         val editedAudio = EditedMediaItem.Builder(MediaItem.fromUri(request.audioUri))
             .setRemoveVideo(true)
             .build()
-        val videoSequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_VIDEO))
-            .addItem(editedImage)
-            .build()
-        val audioSequence = EditedMediaItemSequence.Builder(setOf(C.TRACK_TYPE_AUDIO))
-            .addItem(editedAudio)
-            .build()
+        val videoSequence = EditedMediaItemSequence.Builder(editedImage).build()
+        val audioSequence = EditedMediaItemSequence.Builder(editedAudio).build()
         val composition = Composition.Builder(videoSequence, audioSequence).build()
         val handler = Handler(Looper.getMainLooper())
         lateinit var transformer: Transformer

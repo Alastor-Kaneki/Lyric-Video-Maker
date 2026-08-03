@@ -1,25 +1,7 @@
-import java.util.zip.GZIPInputStream
-
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
-}
-
-val generatedUiDir = layout.buildDirectory.dir("generated/source/lyricUi")
-val generateUiSource = tasks.register("generateUiSource") {
-    val compressedSource = layout.projectDirectory.file("src/main/compressed/LyricVideoMakerScreen.kt.gz")
-    inputs.file(compressedSource)
-    outputs.dir(generatedUiDir)
-    doLast {
-        val output = generatedUiDir.get()
-            .file("com/alastorkaneki/lyricvideomaker/ui/LyricVideoMakerScreen.kt")
-            .asFile
-        output.parentFile.mkdirs()
-        GZIPInputStream(compressedSource.asFile.inputStream()).use { input ->
-            output.outputStream().use { destination -> input.copyTo(destination) }
-        }
-    }
 }
 
 android {
@@ -32,6 +14,7 @@ android {
         targetSdk = 35
         versionCode = 2
         versionName = "1.0.0"
+
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -50,22 +33,30 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlinOptions { jvmTarget = "17" }
-    buildFeatures { compose = true; buildConfig = true }
-    sourceSets["main"].java.srcDir(generatedUiDir)
-    packaging { resources.excludes += "/META-INF/{AL2.0,LGPL2.1}" }
-}
 
-tasks.named("preBuild").configure { dependsOn(generateUiSource) }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+
+    buildFeatures {
+        compose = true
+        buildConfig = true
+    }
+
+    packaging {
+        resources.excludes += "/META-INF/{AL2.0,LGPL2.1}"
+    }
+}
 
 dependencies {
     val composeBom = platform("androidx.compose:compose-bom:2025.04.01")
+
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.activity:activity-compose:1.10.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
-    val media3Version = "1.10.1"
+    val media3Version = "1.8.0"
     implementation("androidx.media3:media3-common:$media3Version")
     implementation("androidx.media3:media3-exoplayer:$media3Version")
     implementation("androidx.media3:media3-transformer:$media3Version")
