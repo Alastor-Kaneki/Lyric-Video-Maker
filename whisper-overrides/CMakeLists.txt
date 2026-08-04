@@ -6,17 +6,18 @@ set(CMAKE_CXX_STANDARD 17)
 
 # Android debug APKs are used for direct installation, but Whisper must never be
 # built at -O0. Apply release-grade CPU optimization to every native target.
-set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O3 -g0 -DNDEBUG -ffast-math -fno-math-errno")
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O3 -g0 -DNDEBUG -ffast-math -fno-math-errno")
+# ggml intentionally relies on non-finite values, so do not use -ffast-math.
+set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -O3 -g0 -DNDEBUG -fno-math-errno")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -O3 -g0 -DNDEBUG -fno-math-errno")
 
 set(WHISPER_LIB_DIR ${CMAKE_SOURCE_DIR}/../../../../../../..)
 
 file(READ "${WHISPER_LIB_DIR}/CMakeLists.txt" MAIN_CMAKE_CONTENT)
 string(REGEX MATCH "project\\(\"whisper\\.cpp\" VERSION ([0-9]+\\.[0-9]+\\.[0-9]+)\\)" VERSION_MATCH "${MAIN_CMAKE_CONTENT}")
 if(CMAKE_MATCH_1)
-    set(WHISPER_VERSION ${CMAKE_MATCH_1} PARENT_SCOPE)
+    set(WHISPER_VERSION ${CMAKE_MATCH_1})
 else()
-    set(WHISPER_VERSION "unknown" PARENT_SCOPE)
+    set(WHISPER_VERSION "unknown")
 endif()
 
 message(STATUS " Whisper version: ${WHISPER_VERSION}")
@@ -40,7 +41,7 @@ function(build_library target_name)
 
     target_compile_definitions(${target_name} PUBLIC GGML_USE_CPU)
     target_compile_definitions(${target_name} PRIVATE WHISPER_VERSION="${WHISPER_VERSION}")
-    target_compile_options(${target_name} PRIVATE -O3 -ffast-math -fno-math-errno)
+    target_compile_options(${target_name} PRIVATE -O3 -fno-math-errno)
 
     if (${target_name} STREQUAL "whisper_v8fp16_va")
         target_compile_options(${target_name} PRIVATE -march=armv8.2-a+fp16)
@@ -64,7 +65,7 @@ function(build_library target_name)
         FetchContent_Declare(ggml SOURCE_DIR ${WHISPER_LIB_DIR}/ggml)
     endif()
     FetchContent_MakeAvailable(ggml)
-    target_compile_options(ggml PRIVATE ${GGML_COMPILE_OPTIONS} -O3 -ffast-math -fno-math-errno)
+    target_compile_options(ggml PRIVATE ${GGML_COMPILE_OPTIONS} -O3 -fno-math-errno)
     target_link_libraries(${target_name} ${LOG_LIB} android ggml)
 endfunction()
 
