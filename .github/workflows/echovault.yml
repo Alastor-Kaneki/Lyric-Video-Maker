@@ -1,0 +1,33 @@
+name: Compile EchoVault Android
+on:
+  push:
+    branches:
+      - echovault-build
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack source
+        run: |
+          base64 -d source.tar.xz.b64 > source.tar.xz
+          echo '24c1904e6411f602fa7e71bf7d248376f238b1cfbaf7356dd82693739f08f51f  source.tar.xz' | sha256sum -c -
+          tar -xJf source.tar.xz
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+      - name: Build APK
+        run: gradle :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: EchoVault-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
